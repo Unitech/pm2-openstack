@@ -1,0 +1,18 @@
+{
+  "name": "openstack-pm2",
+  "version": "0.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies" : {
+    "request" : "*",
+    "each" : "*",
+    "debug" : "*",
+    "nginx-conf" : "git://github.com/Unitech/nginx-conf#master"
+  },
+  "repository": "",
+  "author": "",
+  "license": "BSD"
+}
