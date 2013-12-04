@@ -12,7 +12,8 @@ var t;
  * Global load of the infrastructure
  */
 const TRIGGER_VM_LOADAVG = 1.5;
-const RELAUNCH_AFTER_POP = 60;  // seconds
+const DOWN_SCALE_LOADAVG = 0.6;
+const RELAUNCH_AFTER_POP = 10;  // seconds
 const REFRESH_TIME       = 1; //secs
 
 var Orchestrator = {
@@ -20,14 +21,26 @@ var Orchestrator = {
     this.infra_load = {
       loadavg : 0
     };
-    this.pm2_endpoints = opts.hosts || {};
+    this.pm2_endpoints = [];
 
     this.worker();
     this.channel = new EventEmitter();
     return this.channel;
   },
-  addPm2Node : function(node) {
-    this.pm2_endpoints.push(node);
+  addPm2Node : function(url) {
+    this.pm2_endpoints.push({
+      url : url,
+      current_load : 0,
+      loadavg : []
+    });
+  },
+  removePm2Node : function(url) {
+    var self = this;
+
+    this.pm2_endpoints.forEach(function(ep, i) {
+      if (ep.url == url)
+        return self.pm2_endpoints.splice(i, 1);
+    });
   },
   worker : function() {
     var self = this;
@@ -38,7 +51,17 @@ var Orchestrator = {
         // Get mean of the infra load
         self.calculateInfraLoad(self.pm2_endpoints);
 
-        debug('Medium load = %d', self.infra_load.loadavg);
+        debug('Average load = %d', self.infra_load.loadavg);
+
+        if (self.infra_load.loadavg < DOWN_SCALE_LOADAVG) {
+          debug('Unpop of VM');
+
+          self.channel.emit('scale:down');
+          clearInterval(t);
+          setTimeout(function() {
+            Orchestrator.worker();
+          }, RELAUNCH_AFTER_POP * 1000);
+        }
 
         if (self.infra_load.loadavg > TRIGGER_VM_LOADAVG) {
           debug('Trigger pop of a new VM');
